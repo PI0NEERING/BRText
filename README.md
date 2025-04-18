@@ -4,3 +4,5 @@ This project attempts to take the game [Buckshot Roulette](https://mikeklubnika.
 That's kinda it.
 
 Enjoy!
+
+NOTES: Double or Nothing mode is still unfinished!
