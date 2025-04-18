@@ -41,18 +41,25 @@ Total cash: {cashTotal}""")
 	showCredits()
 # Endless mode win
 def endlessWin(): # Huge thank you to Airis on the ARG Wiki team for giving me the formulas for win calculation.
-	if 0 <= stat_time <= 1049.85:
-		endCash = 70000 - (40000 / 600) * stat_time
-	elif stat_time > 1049.85:
-		endCash = 10
+	global lastCash
+	global currentRound
+	
+	if lastCash is None:
+		if 0 <= int(stat_time.elapsed) <= 1049.85:
+			endCash = 70000 - (40000 / 600) * int(stat_time.elapsed)
+		elif int(stat_time.elapsed) > 1049.85:
+			endCash = 10
+		else:
+			print("Money no make sense!")
 	else:
-		print("Money no make sense!")
-	typewriter(f"Your total money is {endCash}.")
+		endCash = lastCash * 2
+	if lastCash is None: typewriter(f"Your total money is {endCash}.")
+	else: typewriter(f"You went from {lastCash} to {endCash}!")
 	typewriter("Double or Nothing?", False, 0.7)
 	selection = input("Y/N >>>")
 	if selection.lower() == "y":
 		currentRound = 1
-		
+		lastCash = endCash
 	elif selection.lower() == "n":
 		noEndlessWin(endCash)
 	else:
@@ -63,6 +70,7 @@ def preTurnCheck():
 	global currentRound
 	global stat_deathAmt
 	global shotgunSawed
+	global continue_point
 	
 	shotgunSawed = False
 	print(f"PHealth {player_health_bar}\n"
@@ -83,6 +91,7 @@ def preTurnCheck():
 		continue_point = "start_no_pills"
 	elif dealer_health_bar <= 0:
 		clear()
+		stat_time.stop()
 		typewriter("Blood splatters cover your vision. Time seems to slow as you see the dealer sent flying backward into the darkness.\n")
 		if currentRound < 3:
 			currentRound += 1
@@ -97,6 +106,7 @@ def preTurnCheck():
 			time.sleep(3)
 			genShells()
 			time.sleep(1.5)
+			stat_time.start()
 			playerTurn()
 		elif not endlessMode:
 			noEndlessWin()
@@ -105,8 +115,6 @@ def preTurnCheck():
 # Generate shells
 def genShells(dealerSaysAmt=False, dontShuffleASCIIShells=False):
 	global sequenceArray
-	global amount_live
-	global amount_blank
 	
 	total_shells = random.randint(2, 8)
 	amount_live = max(1, total_shells // 2)
@@ -182,7 +190,7 @@ def genItems(amt, keepOldInv=False):
 	global playerInv
 	global dealerInv
 	global dealerExplains
-	if currentRound != 1:
+	if keepOldInv:
 		oldDealerInv = dealerInv
 		oldPlayerInv = playerInv
 	
@@ -257,7 +265,7 @@ def playerTurn():
 	global playerCigAmt
 	
 	preTurnCheck()
-	if player_health_bar >= 1:
+	if player_health_bar <= 0:
 		clear()
 		if playerHandcuffed:
 			typewriter("You are handcuffed, this turn is skipped.")
@@ -383,10 +391,15 @@ def dealerTurn():
 	global knownShell, playerHandcuffed, shotgunSawed, dealerHandcuffed
 	
 	preTurnCheck()
+	amtBlank = 0
+	amtLive = 0
+	for i in sequenceArray:
+		if i == "blank": amtBlank += 1
+		if i == "live": amtLive += 1
 	if dealerHandcuffed:
 		dealerHandcuffed = False
 		typewriter("The dealer is handcuffed, this turn is skipped.", True)
-	if player_health_bar >= 1:
+	if player_health_bar <= 0:
 		knownShell = ""
 		clear()
 		typewriter("It is the dealer's turn.")
@@ -421,7 +434,7 @@ def dealerTurn():
 					shotgunSawed = True
 					dealerInv.remove(i)
 					break
-		if amount_live >= amount_blank: dealerAction = 1
+		if amtLive >= amtBlank: dealerAction = 1
 		else: dealerAction = 2
 		if dealerAction == 1:
 			if sequenceArray[0] == "live":
@@ -435,14 +448,14 @@ def dealerTurn():
 					player_health_bar -= 1
 				playerTurn()
 			elif sequenceArray[0] == "blank":
-				typewriter("The dealer points the shotgun at you...\n\n")
+				typewriter("\nThe dealer points the shotgun at you...\n\n")
 				time.sleep(3)
 				typewriter("*click*", True)
 				sequenceArray.pop(0)
 				playerTurn()
 		elif dealerAction == 2:
 			if sequenceArray[0] == "live":
-				typewriter("The dealer points the shotgun at himself...\n\n")
+				typewriter("\nThe dealer points the shotgun at himself...\n\n")
 				time.sleep(3)
 				typewriter("*BOOM*", True)
 				sequenceArray.pop(0)
@@ -452,7 +465,7 @@ def dealerTurn():
 					dealer_health_bar -= 1
 				playerTurn()
 			elif sequenceArray[0] == "blank":
-				typewriter("The dealer points the shotgun at himself...\n\n")
+				typewriter("\nThe dealer points the shotgun at himself...\n\n")
 				time.sleep(3)
 				typewriter("*click*", True)
 				sequenceArray.pop(0)
@@ -469,6 +482,7 @@ dealerHandcuffed = False
 dealerExplains = True
 dealerInv = []
 playerInv = []
+lastCash = None
 # ---STAT VARS---
 stat_shotsFired = 0
 stat_shellsEjected = 0
@@ -549,7 +563,7 @@ while continue_point:
 		continue_point = "walkway"
 	elif continue_point == "walkway":
 		clear()
-		if not endlessMode:
+		if not endlessMode and not stat_deathAmt >= 1:
 			typewriter("You exit the bathroom.\nYou appear to be on a catwalk of some kind, overlooking a large open area reminding you of a warehouse.\nA man smoking a cigarette is leaning over the railing, looking at the flashing lights below.\nBehind the man is a door, leading to your fate.\nOptions:\n", False, 0.05)
 			print("1. Go back to the bathroom")
 			print("2. Kick down door")
@@ -560,7 +574,7 @@ while continue_point:
 				continue_point = "waiver"
 			else:
 				typewriter("Invalid choice. Try again.", True)
-		elif endlessMode:
+		elif endlessMode or stat_deathAmt >= 1:
 			typewriter("You exit the bathroom.\nYou appear to be on a catwalk of some kind, overlooking a large open area reminding you of a warehouse.\nAt the end of the catwalk is a door, leading to your fate.\nOptions:\n", False, 0.05)
 			input("Press ENTER to kick down door.")
 			stat_doorsKicked += 1
@@ -585,6 +599,7 @@ while continue_point:
 			continue_point = "main"
 	elif continue_point == "main":
 		clear()
+		stat_time.start()
 		if currentRound == 1 and not endlessMode:
 			genHealth(2)
 			showHealth()
