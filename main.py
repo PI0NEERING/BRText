@@ -480,7 +480,7 @@ stat_time = stopwatch.Stopwatch()
 # ---DEV OPTIONS---
 continue_point = "menu"
 devTest = False
-fastText = True
+fastText = False
 
 # ===Main program===
 # continue_point helps me start specific parts of the sequence, so I can repeat several interactions.
